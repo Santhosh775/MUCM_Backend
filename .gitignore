@@ -1,3 +1,4 @@
 node_modules/
 npm-debug.log*
-uploads/
+# User-uploaded application files (UUID subfolders)
+uploads/applications/
