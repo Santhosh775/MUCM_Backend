@@ -4,6 +4,8 @@ const dotenv = require('dotenv');
 const { mountApp } = require('./factory/createApp');
 const { connectDB, sequelize } = require('./config/db');
 const { verifySmtpOnStartup } = require('./utils/mailTransport');
+const { ensureSupportTicketSchema } = require('./utils/ensureSupportTicketSchema');
+const { ensureEmailTemplateSchema } = require('./utils/ensureEmailTemplateSchema');
 
 dotenv.config();
 
@@ -13,9 +15,19 @@ if (process.env.TRUST_PROXY === 'true') {
     app.set('trust proxy', 1);
 }
 
+function getCorsOriginConfig() {
+    const origins = (process.env.CORS_ORIGIN || '*')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+
+    if (origins.includes('*')) return '*';
+    return origins;
+}
+
 app.use(
     cors({
-        origin: '*',
+        origin: getCorsOriginConfig(),
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
         credentials: false
@@ -39,6 +51,8 @@ function shouldSyncDatabaseOnStart() {
 
 async function start() {
     await connectDB();
+    await ensureSupportTicketSchema();
+    await ensureEmailTemplateSchema();
     await verifySmtpOnStartup();
     if (shouldSyncDatabaseOnStart()) {
         await sequelize.sync({ alter: false });

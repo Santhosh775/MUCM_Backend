@@ -22,8 +22,11 @@ const PipelineStage = require('./pipelineStageModel');
 const Faq = require('./faqModel');
 const FaqCategory = require('./faqCategoryModel');
 const SupportTicket = require('./supportTicketModel');
+const SupportTicketCategory = require('./supportTicketCategoryModel');
 const AdminRole = require('./adminRoleModel');
 const Admin = require('./adminModel');
+const AdminUser = require('./adminUserModel');
+const EmailTemplate = require('./emailTemplateModel');
 
 Application.hasOne(PersonalDetails, { foreignKey: 'application_id', as: 'personal_details' });
 PersonalDetails.belongsTo(Application, { foreignKey: 'application_id', as: 'application' });
@@ -102,12 +105,16 @@ Application.belongsTo(PipelineStage, { foreignKey: 'pipeline_stage_id', as: 'pip
 
 ApplicationUser.hasMany(SupportTicket, { foreignKey: 'user_id', as: 'support_tickets' });
 SupportTicket.belongsTo(ApplicationUser, { foreignKey: 'user_id', as: 'user' });
+SupportTicketCategory.hasMany(SupportTicket, { foreignKey: 'category_id', as: 'support_tickets' });
+SupportTicket.belongsTo(SupportTicketCategory, { foreignKey: 'category_id', as: 'category_meta' });
 
 FaqCategory.hasMany(Faq, { foreignKey: 'category_id', as: 'faqs' });
 Faq.belongsTo(FaqCategory, { foreignKey: 'category_id', as: 'faq_category' });
 
 AdminRole.hasMany(Admin, { foreignKey: 'role_id', as: 'admins' });
 Admin.belongsTo(AdminRole, { foreignKey: 'role_id', as: 'role' });
+Admin.hasOne(AdminUser, { foreignKey: 'admin_id', as: 'admin_user' });
+AdminUser.belongsTo(Admin, { foreignKey: 'admin_id', as: 'admin' });
 
 module.exports = {
     Application,
@@ -134,6 +141,9 @@ module.exports = {
     Faq,
     FaqCategory,
     SupportTicket,
+    SupportTicketCategory,
     AdminRole,
-    Admin
+    Admin,
+    AdminUser,
+    EmailTemplate
 };

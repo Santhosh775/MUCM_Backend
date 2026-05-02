@@ -8,7 +8,7 @@ const {
     validateUserRowId,
     validatePrerequisiteDocumentBody
 } = require('../validator/applicationValidator');
-const { validateSupportTicketCreate } = require('../validator/faqSupportValidator');
+const { validateSupportTicketCreate } = require('../validator/supportTicketValidator');
 const { validateRequest } = require('../middleware/validateRequest');
 const { authenticatePortalUser } = require('../middleware/authenticatePortalUser');
 

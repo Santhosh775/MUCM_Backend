@@ -12,7 +12,6 @@ exports.create = async (req, res) => {
         const row = await AdminRole.create({
             name,
             summary: req.body.summary ? String(req.body.summary).trim() : null,
-            permissions: req.body.permissions ?? null,
             is_active: req.body.is_active !== false
         });
         return res.status(201).json({ success: true, message: 'Admin role created', data: row });
@@ -69,7 +68,6 @@ exports.update = async (req, res) => {
             next.name = name;
         }
         if (req.body.summary !== undefined) next.summary = req.body.summary == null ? null : String(req.body.summary).trim();
-        if (req.body.permissions !== undefined) next.permissions = req.body.permissions;
         if (req.body.is_active !== undefined) next.is_active = Boolean(req.body.is_active);
 
         await row.update(next);

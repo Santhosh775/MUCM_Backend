@@ -39,6 +39,7 @@ router.put(
     validateUpdateApplication,
     validateRequest,
     applicationController.updateApplication
+    
 );
 
 router.delete(

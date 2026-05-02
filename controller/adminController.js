@@ -16,6 +16,9 @@ exports.create = async (req, res) => {
             role_id: req.body.role_id,
             full_name: String(req.body.full_name || '').trim(),
             email,
+            permissions: req.body.permissions && typeof req.body.permissions === 'object'
+                ? req.body.permissions
+                : null,
             is_active: req.body.is_active !== false
         });
 
@@ -78,12 +81,35 @@ exports.update = async (req, res) => {
             next.email = email;
         }
         if (req.body.is_active !== undefined) next.is_active = Boolean(req.body.is_active);
+        if (req.body.permissions !== undefined) {
+            next.permissions = req.body.permissions && typeof req.body.permissions === 'object'
+                ? req.body.permissions
+                : null;
+        }
 
         await row.update(next);
         await row.reload({ include: [{ model: AdminRole, as: 'role', attributes: ['id', 'name', 'is_active'] }] });
         return res.json({ success: true, message: 'Admin updated', data: row });
     } catch (error) {
         console.error('update admin', error);
+        return res.status(500).json({ success: false, message: error.message || 'Server error' });
+    }
+};
+
+exports.updatePermissions = async (req, res) => {
+    try {
+        const row = await Admin.findOne({ where: { id: req.params.id, deleted_at: null } });
+        if (!row) return res.status(404).json({ success: false, message: 'Admin not found' });
+
+        const permissions = req.body.permissions && typeof req.body.permissions === 'object'
+            ? req.body.permissions
+            : {};
+
+        await row.update({ permissions });
+        await row.reload({ include: [{ model: AdminRole, as: 'role', attributes: ['id', 'name', 'is_active'] }] });
+        return res.json({ success: true, message: 'Admin permissions updated', data: row });
+    } catch (error) {
+        console.error('update admin permissions', error);
         return res.status(500).json({ success: false, message: error.message || 'Server error' });
     }
 };

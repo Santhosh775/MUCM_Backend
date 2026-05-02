@@ -5,8 +5,12 @@ const crmRoute = require('./crmRoute');
 const faqRoute = require('./faqRoute');
 const faqCategoryRoute = require('./faqCategoryRoute');
 const supportTicketRoute = require('./supportTicketRoute');
+const supportTicketCategoryRoute = require('./supportTicketCategoryRoute');
 const adminRoute = require('./adminRoute');
 const adminRoleRoute = require('./adminRoleRoute');
+const adminAuthRoute = require('./adminAuthRoute');
+const emailTemplateRoute = require('./emailTemplateRoute');
+const composeEmailRoute = require('./composeEmailRoute');
 
 /**
  * Mounts all HTTP API routers. Kept separate from Express bootstrap so the app
@@ -26,8 +30,13 @@ function registerRoutes(app) {
     app.use('/api/v1/faqs', faqRoute);
     app.use('/api/v1/faq-categories', faqCategoryRoute);
     app.use('/api/v1/support-tickets', supportTicketRoute);
+    app.use('/api/v1/support-ticket-categories', supportTicketCategoryRoute);
     app.use('/api/v1/admins', adminRoute);
     app.use('/api/v1/admin-roles', adminRoleRoute);
+    app.use('/api/admin-auth', adminAuthRoute);
+    app.use('/api/v1/admin-auth', adminAuthRoute);
+    app.use('/api/v1/email-templates', emailTemplateRoute);
+    app.use('/api/v1/communications', composeEmailRoute);
 }
 
 module.exports = { registerRoutes };
