@@ -40,17 +40,16 @@ CREATE TABLE "programs"(
     "deleted_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL
 );
 ALTER TABLE "programs" ADD PRIMARY KEY("id");
-ALTER TABLE "programs" ADD CONSTRAINT "programs_code_unique" UNIQUE("code");
 
 CREATE TABLE "intakes"(
     "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
     "tenant_id" UUID NULL,
     "program_id" UUID NULL,
     "name" VARCHAR(100) NOT NULL,
-    "start_date" DATE NOT NULL,
-    "application_deadline" DATE NOT NULL,
+    "start_date" DATE NULL,
+    "application_deadline" DATE NULL,
     "capacity" INTEGER NULL,
-    "status" VARCHAR(20) NULL DEFAULT 'active',
+    "status" VARCHAR(20) NULL DEFAULT 'Open',
     "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
     "created_by" UUID NULL,
@@ -91,13 +90,14 @@ CREATE TABLE "pipeline_stages"(
     "auto_advance" BOOLEAN NULL,
     "sla_days" INTEGER NULL,
     "notification_template_id" UUID NULL,
+    "notification_template" VARCHAR(500) NULL,
+    "active" BOOLEAN NULL DEFAULT TRUE,
     "color" VARCHAR(7) NULL,
     "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL
 );
 ALTER TABLE "pipeline_stages" ADD PRIMARY KEY("id");
-ALTER TABLE "pipeline_stages" ADD CONSTRAINT "pipeline_stages_stage_key_unique" UNIQUE("stage_key");
 
 CREATE TABLE "applications"(
     "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
@@ -505,3 +505,75 @@ ALTER TABLE "admins" ADD PRIMARY KEY("id");
 ALTER TABLE "admins" ADD CONSTRAINT "admins_email_unique" UNIQUE("email");
 CREATE INDEX "admins_role_id_index" ON "admins"("role_id");
 ALTER TABLE "admins" ADD CONSTRAINT "admins_role_id_foreign" FOREIGN KEY("role_id") REFERENCES "admin_roles"("id");
+
+CREATE UNIQUE INDEX "programs_tenant_code_uidx" ON "programs"("tenant_id", "code") WHERE "deleted_at" IS NULL AND "tenant_id" IS NOT NULL;
+CREATE UNIQUE INDEX "programs_code_null_tenant_uidx" ON "programs"("code") WHERE "deleted_at" IS NULL AND "tenant_id" IS NULL;
+CREATE UNIQUE INDEX "pipeline_stages_tenant_stage_uidx" ON "pipeline_stages"("tenant_id", "stage_key") WHERE "deleted_at" IS NULL AND "tenant_id" IS NOT NULL;
+CREATE UNIQUE INDEX "pipeline_stages_stage_null_tenant_uidx" ON "pipeline_stages"("stage_key") WHERE "deleted_at" IS NULL AND "tenant_id" IS NULL;
+
+CREATE TABLE "fee_structure_items"(
+    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "tenant_id" UUID NULL,
+    "program_id" UUID NULL,
+    "intake_id" UUID NULL,
+    "program_code" VARCHAR(50) NOT NULL DEFAULT '',
+    "intake_name" VARCHAR(100) NOT NULL DEFAULT '',
+    "fee_type" VARCHAR(120) NOT NULL,
+    "amount_text" VARCHAR(64) NOT NULL DEFAULT '0',
+    "amount_value" NUMERIC(14, 2) NOT NULL DEFAULT 0,
+    "currency" VARCHAR(10) NOT NULL DEFAULT 'USD',
+    "refund_policy" TEXT NULL,
+    "sort_order" INTEGER NOT NULL DEFAULT 0,
+    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL
+);
+ALTER TABLE "fee_structure_items" ADD PRIMARY KEY("id");
+CREATE INDEX "fee_structure_items_tenant_id_index" ON "fee_structure_items"("tenant_id");
+ALTER TABLE "fee_structure_items" ADD CONSTRAINT "fee_structure_items_tenant_id_foreign" FOREIGN KEY("tenant_id") REFERENCES "tenants"("id") ON DELETE SET NULL;
+ALTER TABLE "fee_structure_items" ADD CONSTRAINT "fee_structure_items_program_id_foreign" FOREIGN KEY("program_id") REFERENCES "programs"("id") ON DELETE SET NULL;
+ALTER TABLE "fee_structure_items" ADD CONSTRAINT "fee_structure_items_intake_id_foreign" FOREIGN KEY("intake_id") REFERENCES "intakes"("id") ON DELETE SET NULL;
+
+CREATE TABLE "settings_document_requirements"(
+    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "tenant_id" UUID NULL,
+    "name" VARCHAR(500) NOT NULL,
+    "required" BOOLEAN NOT NULL DEFAULT TRUE,
+    "accepted_types" VARCHAR(255) NOT NULL DEFAULT 'PDF',
+    "max_size_mb" INTEGER NOT NULL DEFAULT 10,
+    "sort_order" INTEGER NOT NULL DEFAULT 0,
+    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL
+);
+ALTER TABLE "settings_document_requirements" ADD PRIMARY KEY("id");
+CREATE INDEX "settings_document_requirements_tenant_id_index" ON "settings_document_requirements"("tenant_id");
+ALTER TABLE "settings_document_requirements" ADD CONSTRAINT "settings_document_requirements_tenant_id_foreign" FOREIGN KEY("tenant_id") REFERENCES "tenants"("id") ON DELETE SET NULL;
+
+CREATE TABLE "dropdown_option_categories"(
+    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "tenant_id" UUID NULL,
+    "category" VARCHAR(200) NOT NULL,
+    "description" TEXT NULL,
+    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL
+);
+ALTER TABLE "dropdown_option_categories" ADD PRIMARY KEY("id");
+CREATE INDEX "dropdown_option_categories_tenant_id_index" ON "dropdown_option_categories"("tenant_id");
+CREATE UNIQUE INDEX "dropdown_option_categories_tenant_label_uidx" ON "dropdown_option_categories"("tenant_id", lower("category")) WHERE "deleted_at" IS NULL AND "tenant_id" IS NOT NULL;
+CREATE UNIQUE INDEX "dropdown_option_categories_label_null_tenant_uidx" ON "dropdown_option_categories"(lower("category")) WHERE "deleted_at" IS NULL AND "tenant_id" IS NULL;
+ALTER TABLE "dropdown_option_categories" ADD CONSTRAINT "dropdown_option_categories_tenant_id_foreign" FOREIGN KEY("tenant_id") REFERENCES "tenants"("id") ON DELETE SET NULL;
+
+CREATE TABLE "dropdown_option_values"(
+    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "category_id" UUID NOT NULL,
+    "option_value" VARCHAR(500) NOT NULL,
+    "sort_order" INTEGER NOT NULL DEFAULT 0,
+    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL
+);
+ALTER TABLE "dropdown_option_values" ADD PRIMARY KEY("id");
+CREATE INDEX "dropdown_option_values_category_id_index" ON "dropdown_option_values"("category_id");
+ALTER TABLE "dropdown_option_values" ADD CONSTRAINT "dropdown_option_values_category_id_foreign" FOREIGN KEY("category_id") REFERENCES "dropdown_option_categories"("id") ON DELETE CASCADE;

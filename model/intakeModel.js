@@ -10,10 +10,10 @@ const Intake = sequelize.define('Intake', {
     tenant_id: { type: DataTypes.UUID, allowNull: true },
     program_id: { type: DataTypes.UUID, allowNull: true },
     name: { type: DataTypes.STRING(100), allowNull: false },
-    start_date: { type: DataTypes.DATEONLY, allowNull: false },
-    application_deadline: { type: DataTypes.DATEONLY, allowNull: false },
+    start_date: { type: DataTypes.DATEONLY, allowNull: true },
+    application_deadline: { type: DataTypes.DATEONLY, allowNull: true },
     capacity: { type: DataTypes.INTEGER, allowNull: true },
-    status: { type: DataTypes.STRING(20), allowNull: true, defaultValue: 'active' },
+    status: { type: DataTypes.STRING(20), allowNull: true, defaultValue: 'Open' },
     created_by: { type: DataTypes.UUID, allowNull: true },
     updated_by: { type: DataTypes.UUID, allowNull: true },
     deleted_at: { type: DataTypes.DATE, allowNull: true }

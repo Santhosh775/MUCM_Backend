@@ -11,6 +11,8 @@ const adminRoleRoute = require('./adminRoleRoute');
 const adminAuthRoute = require('./adminAuthRoute');
 const emailTemplateRoute = require('./emailTemplateRoute');
 const composeEmailRoute = require('./composeEmailRoute');
+const announcementRoute = require('./announcementRoute');
+const settingsRoute = require('./settingsRoute');
 
 /**
  * Mounts all HTTP API routers. Kept separate from Express bootstrap so the app
@@ -37,6 +39,9 @@ function registerRoutes(app) {
     app.use('/api/v1/admin-auth', adminAuthRoute);
     app.use('/api/v1/email-templates', emailTemplateRoute);
     app.use('/api/v1/communications', composeEmailRoute);
+    app.use('/api/v1/announcements', announcementRoute);
+    /** Admin settings (programs, intakes, fees, docs, pipeline, dropdowns) — camelCase API aligned with university-admin-panel */
+    app.use('/api/v1/settings', settingsRoute);
 }
 
 module.exports = { registerRoutes };

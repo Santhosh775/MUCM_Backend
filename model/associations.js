@@ -27,6 +27,11 @@ const AdminRole = require('./adminRoleModel');
 const Admin = require('./adminModel');
 const AdminUser = require('./adminUserModel');
 const EmailTemplate = require('./emailTemplateModel');
+const Announcement = require('./announcementModel');
+const FeeStructureItem = require('./feeStructureItemModel');
+const SettingsDocumentRequirement = require('./settingsDocumentRequirementModel');
+const DropdownOptionCategory = require('./dropdownOptionCategoryModel');
+const DropdownOptionValue = require('./dropdownOptionValueModel');
 
 Application.hasOne(PersonalDetails, { foreignKey: 'application_id', as: 'personal_details' });
 PersonalDetails.belongsTo(Application, { foreignKey: 'application_id', as: 'application' });
@@ -88,6 +93,23 @@ PipelineStage.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 Program.hasMany(Intake, { foreignKey: 'program_id', as: 'intakes' });
 Intake.belongsTo(Program, { foreignKey: 'program_id', as: 'program' });
 
+Tenant.hasMany(FeeStructureItem, { foreignKey: 'tenant_id', as: 'fee_structure_items' });
+FeeStructureItem.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+Program.hasMany(FeeStructureItem, { foreignKey: 'program_id', as: 'fee_structure_items' });
+FeeStructureItem.belongsTo(Program, { foreignKey: 'program_id', as: 'program' });
+Intake.hasMany(FeeStructureItem, { foreignKey: 'intake_id', as: 'fee_structure_items' });
+FeeStructureItem.belongsTo(Intake, { foreignKey: 'intake_id', as: 'intake' });
+
+Tenant.hasMany(SettingsDocumentRequirement, { foreignKey: 'tenant_id', as: 'settings_document_requirements' });
+SettingsDocumentRequirement.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+
+Tenant.hasMany(DropdownOptionCategory, { foreignKey: 'tenant_id', as: 'dropdown_option_categories' });
+DropdownOptionCategory.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
+DropdownOptionCategory.hasMany(DropdownOptionValue, { foreignKey: 'category_id', as: 'option_values' });
+DropdownOptionValue.belongsTo(DropdownOptionCategory, { foreignKey: 'category_id', as: 'category' });
+
+PipelineStage.belongsTo(EmailTemplate, { foreignKey: 'notification_template_id', as: 'email_template' });
+
 Tenant.hasMany(Application, { foreignKey: 'tenant_id', as: 'applications' });
 Application.belongsTo(Tenant, { foreignKey: 'tenant_id', as: 'tenant' });
 
@@ -145,5 +167,10 @@ module.exports = {
     AdminRole,
     Admin,
     AdminUser,
-    EmailTemplate
+    EmailTemplate,
+    Announcement,
+    FeeStructureItem,
+    SettingsDocumentRequirement,
+    DropdownOptionCategory,
+    DropdownOptionValue
 };

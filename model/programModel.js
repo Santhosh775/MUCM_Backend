@@ -9,7 +9,7 @@ const Program = sequelize.define('Program', {
     },
     tenant_id: { type: DataTypes.UUID, allowNull: true },
     name: { type: DataTypes.STRING(255), allowNull: false },
-    code: { type: DataTypes.STRING(50), allowNull: false, unique: true },
+    code: { type: DataTypes.STRING(50), allowNull: false },
     duration_years: { type: DataTypes.INTEGER, allowNull: false },
     level: { type: DataTypes.STRING(50), allowNull: true },
     description: { type: DataTypes.TEXT, allowNull: true },
