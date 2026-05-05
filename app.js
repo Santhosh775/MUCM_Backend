@@ -10,6 +10,7 @@ const { ensurePipelineStagesSettingsColumns } = require('./utils/ensurePipelineS
 const { ensureAdminsCountryColumn } = require('./utils/ensureAdminsCountryColumn');
 const { ensureDocumentReviewSignatureColumn } = require('./utils/ensureDocumentReviewSignatureColumn');
 const { ensureApplicationStatusNotificationsSchema } = require('./utils/ensureApplicationStatusNotificationsSchema');
+const { ensureProgramsDescriptionColumn } = require('./utils/ensureProgramsDescriptionColumn');
 
 dotenv.config();
 
@@ -61,6 +62,7 @@ async function start() {
     await ensureAdminsCountryColumn();
     await ensureDocumentReviewSignatureColumn();
     await ensureApplicationStatusNotificationsSchema();
+    await ensureProgramsDescriptionColumn();
     await verifySmtpOnStartup();
     if (shouldSyncDatabaseOnStart()) {
         await sequelize.sync({ alter: false });

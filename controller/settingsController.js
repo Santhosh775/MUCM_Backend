@@ -36,6 +36,7 @@ function formatProgram(row) {
         code: j.code,
         durationYears: j.duration_years,
         level: j.level || '—',
+        description: j.description || '—',
         capacity: j.capacity ?? 0,
         active: j.active !== false
     };
@@ -204,6 +205,8 @@ exports.createProgram = async (req, res) => {
             code,
             duration_years: Math.max(0, Number(req.body.durationYears ?? req.body.duration_years) || 0),
             level: req.body.level != null ? String(req.body.level).trim() || null : null,
+            description:
+                req.body.description != null ? String(req.body.description).trim() || null : null,
             capacity: Math.max(0, Number(req.body.capacity) || 0),
             active: req.body.active !== false
         });
@@ -238,6 +241,9 @@ exports.updateProgram = async (req, res) => {
             );
         }
         if (req.body.level !== undefined) patch.level = String(req.body.level).trim() || null;
+        if (req.body.description !== undefined) {
+            patch.description = String(req.body.description ?? '').trim() || null;
+        }
         if (req.body.capacity !== undefined) patch.capacity = Math.max(0, Number(req.body.capacity) || 0);
         if (req.body.active !== undefined) patch.active = Boolean(req.body.active);
         if (req.body.tenant_id !== undefined || req.body.tenantId !== undefined) {

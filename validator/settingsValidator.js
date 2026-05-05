@@ -13,6 +13,7 @@ exports.validateProgramCreate = [
     body('tenantId').optional().isUUID(),
     body('durationYears').optional().isInt({ min: 0 }),
     body('duration_years').optional().isInt({ min: 0 }),
+    body('description').optional().isString(),
     body('capacity').optional().isInt({ min: 0 }),
     body('active').optional().isBoolean()
 ];
@@ -25,6 +26,7 @@ exports.validateProgramUpdate = [
     body('tenantId').optional().isUUID(),
     body('durationYears').optional().isInt({ min: 0 }),
     body('duration_years').optional().isInt({ min: 0 }),
+    body('description').optional().isString(),
     body('capacity').optional().isInt({ min: 0 }),
     body('active').optional().isBoolean()
 ];
