@@ -29,6 +29,8 @@ const Document = sequelize.define('Document', {
     exam_results_marksheet: { type: DataTypes.STRING(512), allowNull: true },
     /** Portal sponsorSignedFinancialForm — signed Step 7 PDF re-upload (sponsor options B/C) */
     sponsor_signed_financial_form: { type: DataTypes.STRING(512), allowNull: true },
+    /** Step 8 review signature image (data URL or uploaded path) */
+    review_signature_document: { type: DataTypes.TEXT, allowNull: true },
     created_at: { type: DataTypes.DATE, allowNull: true },
     updated_at: { type: DataTypes.DATE, allowNull: true }
 }, {

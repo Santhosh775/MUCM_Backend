@@ -59,6 +59,14 @@ exports.validateApplicationIdLookup = [
     param('applicationId').isString().isLength({ min: 1, max: 50 })
 ];
 
+exports.validateStatusUpdateByApplicationId = [
+    param('applicationId').isString().isLength({ min: 1, max: 50 }),
+    body('current_status').optional().isString().isLength({ max: 50 }),
+    body('status_label').optional().isString().isLength({ max: 120 }),
+    body('pipeline_stage_id').optional().isUUID(),
+    body('updated_by').optional().isUUID()
+];
+
 exports.validateListQuery = [
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1, max: 100 }),

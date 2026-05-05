@@ -10,6 +10,7 @@ const Admin = sequelize.define('Admin', {
     role_id: { type: DataTypes.UUID, allowNull: false },
     full_name: { type: DataTypes.STRING(150), allowNull: false },
     email: { type: DataTypes.STRING(255), allowNull: false, unique: true },
+    country: { type: DataTypes.STRING(100), allowNull: true },
     permissions: { type: DataTypes.JSON, allowNull: true },
     is_active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
     deleted_at: { type: DataTypes.DATE, allowNull: true }

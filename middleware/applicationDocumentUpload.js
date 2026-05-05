@@ -37,6 +37,11 @@ const DOCUMENT_UPLOAD_FIELDS = {
         maxBytes: 10 * 1024 * 1024,
         extensions: ['.pdf']
     },
+    reviewSignatureDocument: {
+        attribute: 'review_signature_document',
+        maxBytes: 10 * 1024 * 1024,
+        extensions: ['.pdf', '.jpg', '.jpeg', '.png']
+    },
     cv: {
         attribute: 'cv_resume',
         maxBytes: 10 * 1024 * 1024,

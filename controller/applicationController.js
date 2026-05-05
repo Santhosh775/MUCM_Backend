@@ -1,5 +1,6 @@
 const {
     Application,
+    ApplicationUser,
     PersonalDetails,
     EmergencyContact,
     ParentGuardianInfo,
@@ -11,7 +12,8 @@ const {
     Experience,
     Document,
     FinancialSupport,
-    PortalApplicationDraft
+    PortalApplicationDraft,
+    ApplicationStatusNotification
 } = require('../model/associations');
 const { generateApplicationId } = require('../utils/generateApplicationId');
 
@@ -56,6 +58,122 @@ function shouldDeleteDraftAfterSubmit(app) {
     );
 }
 
+function statusToLabel(statusKey) {
+    const raw = String(statusKey || '').trim();
+    if (!raw) return 'Updated';
+    return raw
+        .split(/[_\s-]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+}
+
+async function notifyUsersForStatusChange(app, nextStatusKey, nextStatusLabelInput) {
+    if (!app?.id) return;
+
+    const statusKey = String(nextStatusKey || '').trim();
+    const statusLabel = String(nextStatusLabelInput || '').trim() || statusToLabel(statusKey);
+    if (!statusKey && !statusLabel) return;
+
+    const candidateIds = new Set();
+    if (app.student_id) candidateIds.add(String(app.student_id));
+    if (app.created_by) candidateIds.add(String(app.created_by));
+    if (app.updated_by) candidateIds.add(String(app.updated_by));
+
+    const draftRows = await PortalApplicationDraft.findAll({
+        where: { application_id: app.id },
+        attributes: ['user_id']
+    });
+    for (const draft of draftRows) {
+        if (draft?.user_id) candidateIds.add(String(draft.user_id));
+    }
+
+    const candidateArray = Array.from(candidateIds);
+    const validUsers = candidateArray.length > 0
+        ? await ApplicationUser.findAll({
+            where: { id: candidateArray },
+            attributes: ['id']
+        })
+        : [];
+    const recipientIds = new Set(validUsers.map((row) => String(row.id)));
+
+    if (recipientIds.size === 0) {
+        const personal = await PersonalDetails.findOne({
+            where: { application_id: app.id },
+            attributes: ['email']
+        });
+        const email = String(personal?.email || '').trim().toLowerCase();
+        if (email) {
+            const portalUser = await ApplicationUser.findOne({
+                where: { email },
+                attributes: ['id']
+            });
+            if (portalUser?.id) {
+                recipientIds.add(String(portalUser.id));
+            }
+        }
+    }
+
+    if (recipientIds.size === 0) {
+        console.warn('notifyUsersForStatusChange: no valid recipient found', {
+            application_row_id: app.id,
+            application_id: app.application_id
+        });
+        return;
+    }
+
+    const message = `Your application ${app.application_id} status changed to ${statusLabel}.`;
+    try {
+        await ApplicationStatusNotification.bulkCreate(
+            Array.from(recipientIds).map((userId) => ({
+                user_id: userId,
+                application_row_id: app.id,
+                application_id: app.application_id,
+                status_key: statusKey || null,
+                status_label: statusLabel || null,
+                message,
+                is_read: false
+            }))
+        );
+    } catch (error) {
+        console.error('notifyUsersForStatusChange: insert failed', {
+            application_row_id: app.id,
+            application_id: app.application_id,
+            recipients: Array.from(recipientIds),
+            error: error?.message || error
+        });
+        throw error;
+    }
+}
+
+async function syncReviewSignatureDocument(applicationId, reviewSignatureUpload) {
+    if (!applicationId) return;
+    if (reviewSignatureUpload === undefined) return;
+
+    const now = new Date();
+    const [doc] = await Document.findOrCreate({
+        where: { application_id: applicationId },
+        defaults: {
+            application_id: applicationId,
+            upload_progress: false,
+            review_signature_document: '',
+            created_at: now,
+            updated_at: now
+        }
+    });
+
+    const normalizedSignature = (() => {
+        if (reviewSignatureUpload === null) return null;
+        const text = String(reviewSignatureUpload || '').trim();
+        return text === '' ? null : text;
+    })();
+
+    await doc.update({
+        review_signature_document: normalizedSignature,
+        updated_at: now
+    });
+}
+
 exports.createApplication = async (req, res) => {
     try {
         const application_id = req.body.application_id || (await generateApplicationId());
@@ -95,6 +213,8 @@ exports.createApplication = async (req, res) => {
             created_by: req.body.created_by ?? null,
             updated_by: req.body.updated_by ?? null
         });
+
+        await syncReviewSignatureDocument(row.id, req.body.review_signature_upload);
 
         return res.status(201).json({ success: true, message: 'Application created', data: row });
     } catch (error) {
@@ -190,7 +310,17 @@ exports.updateApplication = async (req, res) => {
             if (Object.prototype.hasOwnProperty.call(req.body, k)) payload[k] = req.body[k];
         }
 
+        const previousStatus = app.current_status;
         await app.update(payload);
+
+        await syncReviewSignatureDocument(app.id, payload.review_signature_upload);
+
+        const statusChanged =
+            Object.prototype.hasOwnProperty.call(payload, 'current_status')
+            && String(previousStatus || '') !== String(payload.current_status || '');
+        if (statusChanged) {
+            await notifyUsersForStatusChange(app, payload.current_status, req.body.status_label);
+        }
 
         if (shouldDeleteDraftAfterSubmit(app)) {
             await PortalApplicationDraft.destroy({
@@ -201,6 +331,52 @@ exports.updateApplication = async (req, res) => {
         return res.json({ success: true, message: 'Application updated', data: app });
     } catch (error) {
         console.error('updateApplication', error);
+        return res.status(500).json({ success: false, message: error.message || 'Server error' });
+    }
+};
+
+exports.updateApplicationStatusByApplicationId = async (req, res) => {
+    try {
+        const { applicationId } = req.params;
+        const app = await Application.findOne({
+            where: { application_id: applicationId, deleted_at: null }
+        });
+        if (!app) {
+            return res.status(404).json({ success: false, message: 'Application not found' });
+        }
+
+        const payload = {};
+        const previousStatus = app.current_status;
+        if (Object.prototype.hasOwnProperty.call(req.body, 'current_status')) {
+            payload.current_status = req.body.current_status;
+        }
+        if (Object.prototype.hasOwnProperty.call(req.body, 'pipeline_stage_id')) {
+            payload.pipeline_stage_id = req.body.pipeline_stage_id;
+        }
+        if (Object.prototype.hasOwnProperty.call(req.body, 'updated_by')) {
+            payload.updated_by = req.body.updated_by;
+        }
+
+        if (Object.keys(payload).length === 0) {
+            return res.status(400).json({ success: false, message: 'No status fields provided.' });
+        }
+
+        await app.update(payload);
+
+        if (req.body?.updated_by) {
+            app.updated_by = req.body.updated_by;
+        }
+
+        const statusChanged =
+            Object.prototype.hasOwnProperty.call(payload, 'current_status')
+            && String(previousStatus || '') !== String(payload.current_status || '');
+        if (statusChanged) {
+            await notifyUsersForStatusChange(app, payload.current_status, req.body.status_label);
+        }
+
+        return res.json({ success: true, message: 'Application status updated', data: app });
+    } catch (error) {
+        console.error('updateApplicationStatusByApplicationId', error);
         return res.status(500).json({ success: false, message: error.message || 'Server error' });
     }
 };

@@ -25,6 +25,57 @@ async function getApplicationOr404(req, res) {
     return app;
 }
 
+async function getApplicationByApplicationIdOr404(req, res) {
+    const { applicationId } = req.params;
+    const app = await Application.findOne({
+        where: { application_id: applicationId, deleted_at: null }
+    });
+    if (!app) {
+        res.status(404).json({ success: false, message: 'Application not found' });
+        return null;
+    }
+    return app;
+}
+
+function buildPublicFileUrl(relativeOrAbsolutePath) {
+    if (!relativeOrAbsolutePath || typeof relativeOrAbsolutePath !== 'string') return null;
+    const normalized = relativeOrAbsolutePath.trim().replace(/\\/g, '/');
+    if (!normalized) return null;
+    if (
+        normalized.startsWith('http://')
+        || normalized.startsWith('https://')
+        || normalized.startsWith('data:')
+    ) return normalized;
+    const publicPath = normalized.startsWith('/') ? normalized : `/${normalized}`;
+    const baseUrl = process.env.PUBLIC_API_BASE_URL || '';
+    return baseUrl ? `${baseUrl.replace(/\/$/, '')}${publicPath}` : publicPath;
+}
+
+function withDocumentFileUrls(documentRow) {
+    if (!documentRow) return null;
+    const data = documentRow.toJSON ? documentRow.toJSON() : documentRow;
+    const fileFields = [
+        'passport',
+        'bank_statement',
+        'premedical_Bachelor_ug_HSC_Certificate',
+        'Secondary_11grade',
+        'cv_resume',
+        'passport_photo',
+        'other_professional_transcripts',
+        'exam_results_marksheet',
+        'sponsor_signed_financial_form',
+        'review_signature_document'
+    ];
+    const files = {};
+    for (const key of fileFields) {
+        files[key] = {
+            path: data[key] || null,
+            url: buildPublicFileUrl(data[key])
+        };
+    }
+    return { ...data, files };
+}
+
 function normalizeDocumentPayload(payload) {
     const next = { ...payload };
     if (Object.prototype.hasOwnProperty.call(next, 'other_professional transcripts')) {
@@ -198,16 +249,68 @@ exports.createDocument = (req, res) => createRow(req, res, Document, 'Document',
         Secondary_11grade: '',
         cv_resume: '',
         passport_photo: '',
-        sponsor_signed_financial_form: ''
+        sponsor_signed_financial_form: '',
+        review_signature_document: ''
     }
 });
-exports.listDocuments = (req, res) => listRows(req, res, Document, 'Documents');
-exports.getDocument = (req, res) => getRow(req, res, Document, 'Document');
+exports.listDocuments = async (req, res) => {
+    try {
+        const app = await getApplicationOr404(req, res);
+        if (!app) return;
+        const rows = await Document.findAll({
+            where: { application_id: app.id },
+            order: [['created_at', 'DESC']]
+        });
+        return res.json({
+            success: true,
+            message: 'Documents list',
+            data: rows.map((row) => withDocumentFileUrls(row))
+        });
+    } catch (error) {
+        console.error('list Documents', error);
+        return res.status(500).json({ success: false, message: error.message || 'Server error' });
+    }
+};
+exports.getDocument = async (req, res) => {
+    try {
+        const app = await getApplicationOr404(req, res);
+        if (!app) return;
+        const row = await Document.findOne({
+            where: { id: req.params.rowId, application_id: app.id }
+        });
+        if (!row) return res.status(404).json({ success: false, message: 'Document not found' });
+        return res.json({ success: true, data: withDocumentFileUrls(row) });
+    } catch (error) {
+        console.error('get Document', error);
+        return res.status(500).json({ success: false, message: error.message || 'Server error' });
+    }
+};
 exports.updateDocument = (req, res) => updateRow(req, res, Document, 'Document', {
     transformPayload: normalizeDocumentPayload,
     touchTimestamps: true
 });
 exports.deleteDocument = (req, res) => deleteRow(req, res, Document, 'Document');
+
+exports.getDocumentByApplicationId = async (req, res) => {
+    try {
+        const app = await getApplicationByApplicationIdOr404(req, res);
+        if (!app) return;
+        const documentRow = await Document.findOne({
+            where: { application_id: app.id }
+        });
+        if (!documentRow) {
+            return res.status(404).json({ success: false, message: 'Document not found' });
+        }
+        return res.json({
+            success: true,
+            message: 'Document fetched',
+            data: withDocumentFileUrls(documentRow)
+        });
+    } catch (error) {
+        console.error('getDocumentByApplicationId', error);
+        return res.status(500).json({ success: false, message: error.message || 'Server error' });
+    }
+};
 
 /**
  * POST multipart: field `file`, query documentType — stores under uploads/applications/:applicationUuid/

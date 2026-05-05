@@ -297,6 +297,7 @@ CREATE TABLE "Document"(
     "other_professional transcripts" VARCHAR(255) NULL,
     "Anyother_helpful_transcripts" VARCHAR(255) NULL,
     "exam_results_marksheet" VARCHAR(255) NULL,
+    "review_signature_document" TEXT NULL,
     "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL,
     "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL
 );
@@ -417,6 +418,24 @@ ALTER TABLE "application_user_logins" ADD PRIMARY KEY("id");
 CREATE INDEX "application_user_logins_user_id_index" ON "application_user_logins"("user_id");
 ALTER TABLE "application_user_logins" ADD CONSTRAINT "application_user_logins_user_id_foreign" FOREIGN KEY("user_id") REFERENCES "application_users"("id") ON DELETE CASCADE;
 
+CREATE TABLE "application_status_notifications"(
+    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "user_id" UUID NOT NULL,
+    "application_row_id" UUID NOT NULL,
+    "application_id" VARCHAR(50) NOT NULL,
+    "status_key" VARCHAR(80) NULL,
+    "status_label" VARCHAR(120) NULL,
+    "message" TEXT NOT NULL,
+    "is_read" BOOLEAN NOT NULL DEFAULT FALSE,
+    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE "application_status_notifications" ADD PRIMARY KEY("id");
+CREATE INDEX "application_status_notifications_user_id_index" ON "application_status_notifications"("user_id");
+CREATE INDEX "application_status_notifications_application_row_id_index" ON "application_status_notifications"("application_row_id");
+ALTER TABLE "application_status_notifications" ADD CONSTRAINT "application_status_notifications_user_id_foreign" FOREIGN KEY("user_id") REFERENCES "application_users"("id") ON DELETE CASCADE;
+ALTER TABLE "application_status_notifications" ADD CONSTRAINT "application_status_notifications_application_row_id_foreign" FOREIGN KEY("application_row_id") REFERENCES "applications"("id") ON DELETE CASCADE;
+
 CREATE TABLE "faqs"(
     "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
     "category" VARCHAR(120) NOT NULL DEFAULT 'General',
@@ -496,6 +515,7 @@ CREATE TABLE "admins"(
     "role_id" UUID NOT NULL,
     "full_name" VARCHAR(150) NOT NULL,
     "email" VARCHAR(255) NOT NULL,
+    "country" VARCHAR(100) NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT TRUE,
     "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL DEFAULT CURRENT_TIMESTAMP,

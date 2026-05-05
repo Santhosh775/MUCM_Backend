@@ -12,10 +12,14 @@ exports.create = async (req, res) => {
         const duplicate = await Admin.findOne({ where: { email, deleted_at: null } });
         if (duplicate) return res.status(409).json({ success: false, message: 'Admin email already exists' });
 
+        const countryValue = req.body.country !== undefined ? req.body.country : req.body.region;
         const row = await Admin.create({
             role_id: req.body.role_id,
             full_name: String(req.body.full_name || '').trim(),
             email,
+            country: countryValue !== undefined && countryValue !== null
+                ? String(countryValue).trim() || null
+                : null,
             permissions: req.body.permissions && typeof req.body.permissions === 'object'
                 ? req.body.permissions
                 : null,
@@ -79,6 +83,10 @@ exports.update = async (req, res) => {
             });
             if (duplicate) return res.status(409).json({ success: false, message: 'Admin email already exists' });
             next.email = email;
+        }
+        const nextCountryValue = req.body.country !== undefined ? req.body.country : req.body.region;
+        if (nextCountryValue !== undefined) {
+            next.country = nextCountryValue === null ? null : (String(nextCountryValue).trim() || null);
         }
         if (req.body.is_active !== undefined) next.is_active = Boolean(req.body.is_active);
         if (req.body.permissions !== undefined) {

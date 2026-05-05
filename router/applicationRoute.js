@@ -2,16 +2,19 @@ const express = require('express');
 const router = express.Router();
 const applicationController = require('../controller/applicationController');
 const sectionController = require('../controller/applicationSectionController');
+const statusNotificationController = require('../controller/applicationStatusNotificationController');
 const {
     validateCreateApplication,
     validateUpdateApplication,
     validateIdParam,
     validateApplicationIdLookup,
     validateListQuery,
-    validateRowId
+    validateRowId,
+    validateStatusUpdateByApplicationId
 } = require('../validator/applicationValidator');
 const { validateRequest } = require('../middleware/validateRequest');
 const { applicationDocumentUpload } = require('../middleware/applicationDocumentUpload');
+const { authenticatePortalJwt } = require('../middleware/authenticatePortalUser');
 
 router.get(
     '/by-application-id/:applicationId',
@@ -40,6 +43,25 @@ router.put(
     validateRequest,
     applicationController.updateApplication
     
+);
+
+router.put(
+    '/by-application-id/:applicationId/status',
+    validateStatusUpdateByApplicationId,
+    validateRequest,
+    applicationController.updateApplicationStatusByApplicationId
+);
+
+router.get(
+    '/notifications/my',
+    authenticatePortalJwt,
+    statusNotificationController.listMyNotifications
+);
+
+router.patch(
+    '/notifications/:notificationId/read',
+    authenticatePortalJwt,
+    statusNotificationController.markMyNotificationRead
 );
 
 router.delete(
@@ -384,6 +406,13 @@ router.get(
     validateIdParam,
     validateRequest,
     sectionController.listDocuments
+);
+
+router.get(
+    '/by-application-id/:applicationId/document',
+    validateApplicationIdLookup,
+    validateRequest,
+    sectionController.getDocumentByApplicationId
 );
 
 router.get(

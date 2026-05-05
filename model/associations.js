@@ -13,6 +13,7 @@ const PrerequisiteDocument = require('./prerequisiteDocumentModel');
 const ApplicationUser = require('./applicationUserModel');
 const ApplicationUserLogin = require('./applicationUserLoginModel');
 const PortalApplicationDraft = require('./portalApplicationDraftModel');
+const ApplicationStatusNotification = require('./applicationStatusNotificationModel');
 const FinancialSupport = require('./financialSupportModel');
 const Tenant = require('./tenantModel');
 const Program = require('./programModel');
@@ -68,9 +69,13 @@ ApplicationUserLogin.belongsTo(ApplicationUser, { foreignKey: 'user_id', as: 'us
 
 ApplicationUser.hasMany(PortalApplicationDraft, { foreignKey: 'user_id', as: 'portal_application_drafts' });
 PortalApplicationDraft.belongsTo(ApplicationUser, { foreignKey: 'user_id', as: 'user' });
+ApplicationUser.hasMany(ApplicationStatusNotification, { foreignKey: 'user_id', as: 'status_notifications' });
+ApplicationStatusNotification.belongsTo(ApplicationUser, { foreignKey: 'user_id', as: 'user' });
 
 Application.hasMany(PortalApplicationDraft, { foreignKey: 'application_id', as: 'portal_drafts' });
 PortalApplicationDraft.belongsTo(Application, { foreignKey: 'application_id', as: 'application' });
+Application.hasMany(ApplicationStatusNotification, { foreignKey: 'application_row_id', as: 'status_notifications' });
+ApplicationStatusNotification.belongsTo(Application, { foreignKey: 'application_row_id', as: 'application' });
 
 ApplicationUser.hasOne(PrerequisiteDocument, { foreignKey: 'user_id', as: 'prerequisite_document' });
 PrerequisiteDocument.belongsTo(ApplicationUser, { foreignKey: 'user_id', as: 'user' });
@@ -154,6 +159,7 @@ module.exports = {
     ApplicationUser,
     ApplicationUserLogin,
     PortalApplicationDraft,
+    ApplicationStatusNotification,
     FinancialSupport,
     Tenant,
     Program,

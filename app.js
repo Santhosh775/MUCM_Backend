@@ -7,6 +7,9 @@ const { verifySmtpOnStartup } = require('./utils/mailTransport');
 const { ensureSupportTicketSchema } = require('./utils/ensureSupportTicketSchema');
 const { ensureEmailTemplateSchema } = require('./utils/ensureEmailTemplateSchema');
 const { ensurePipelineStagesSettingsColumns } = require('./utils/ensurePipelineStagesSettingsColumns');
+const { ensureAdminsCountryColumn } = require('./utils/ensureAdminsCountryColumn');
+const { ensureDocumentReviewSignatureColumn } = require('./utils/ensureDocumentReviewSignatureColumn');
+const { ensureApplicationStatusNotificationsSchema } = require('./utils/ensureApplicationStatusNotificationsSchema');
 
 dotenv.config();
 
@@ -55,6 +58,9 @@ async function start() {
     await ensureSupportTicketSchema();
     await ensureEmailTemplateSchema();
     await ensurePipelineStagesSettingsColumns();
+    await ensureAdminsCountryColumn();
+    await ensureDocumentReviewSignatureColumn();
+    await ensureApplicationStatusNotificationsSchema();
     await verifySmtpOnStartup();
     if (shouldSyncDatabaseOnStart()) {
         await sequelize.sync({ alter: false });

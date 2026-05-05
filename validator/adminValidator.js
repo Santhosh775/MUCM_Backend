@@ -17,6 +17,7 @@ exports.validateAdminCreate = [
     body('role_id').isUUID().withMessage('role_id is required'),
     body('full_name').trim().isLength({ min: 1, max: 150 }).withMessage('full_name is required'),
     body('email').trim().isEmail().withMessage('valid email is required'),
+    body('country').optional({ nullable: true }).isString().trim().isLength({ max: 100 }),
     body('permissions').optional({ nullable: true }).isObject().withMessage('permissions must be an object'),
     body('is_active').optional().isBoolean()
 ];
@@ -26,6 +27,7 @@ exports.validateAdminUpdate = [
     body('role_id').optional().isUUID(),
     body('full_name').optional().trim().isLength({ min: 1, max: 150 }),
     body('email').optional().trim().isEmail(),
+    body('country').optional({ nullable: true }).isString().trim().isLength({ max: 100 }),
     body('permissions').optional({ nullable: true }).isObject().withMessage('permissions must be an object'),
     body('is_active').optional().isBoolean()
 ];
