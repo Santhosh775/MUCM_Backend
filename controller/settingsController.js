@@ -29,6 +29,7 @@ function dashDate(v) {
 
 function formatProgram(row) {
     const j = row.toJSON ? row.toJSON() : row;
+    const subPrograms = Array.isArray(j.sub_programs) ? j.sub_programs : [];
     return {
         id: j.id,
         tenant_id: j.tenant_id,
@@ -38,7 +39,8 @@ function formatProgram(row) {
         level: j.level || '—',
         description: j.description || '—',
         capacity: j.capacity ?? 0,
-        active: j.active !== false
+        active: j.active !== false,
+        subPrograms
     };
 }
 
@@ -199,6 +201,7 @@ exports.createProgram = async (req, res) => {
         if (!(await assertProgramCodeUnique(tenant_id, code, null))) {
             return res.status(409).json({ success: false, message: 'Program code already exists for this tenant' });
         }
+        const subPrograms = Array.isArray(req.body.subPrograms) ? req.body.subPrograms.map((s) => String(s).trim()).filter(Boolean) : [];
         const row = await Program.create({
             tenant_id,
             name: String(req.body.name || '').trim(),
@@ -208,7 +211,8 @@ exports.createProgram = async (req, res) => {
             description:
                 req.body.description != null ? String(req.body.description).trim() || null : null,
             capacity: Math.max(0, Number(req.body.capacity) || 0),
-            active: req.body.active !== false
+            active: req.body.active !== false,
+            sub_programs: subPrograms
         });
         return res.status(201).json({ success: true, message: 'Program created', data: formatProgram(row) });
     } catch (error) {
@@ -248,6 +252,11 @@ exports.updateProgram = async (req, res) => {
         if (req.body.active !== undefined) patch.active = Boolean(req.body.active);
         if (req.body.tenant_id !== undefined || req.body.tenantId !== undefined) {
             patch.tenant_id = req.body.tenant_id ?? req.body.tenantId;
+        }
+        if (req.body.subPrograms !== undefined) {
+            patch.sub_programs = Array.isArray(req.body.subPrograms)
+                ? req.body.subPrograms.map((s) => String(s).trim()).filter(Boolean)
+                : [];
         }
         await row.update(patch);
         return res.json({ success: true, message: 'Program updated', data: formatProgram(row) });

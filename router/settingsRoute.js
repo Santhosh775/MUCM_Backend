@@ -25,6 +25,10 @@ const {
     validateDropdownCategoryIdParam
 } = require('../validator/settingsValidator');
 
+// Public endpoints — portal app fetches these without admin auth
+router.get('/programs/public', validateSettingsTenantQuery, validateRequest, settingsController.listPrograms);
+router.get('/dropdown-categories/public', validateSettingsTenantQuery, validateRequest, settingsController.listDropdownCategories);
+
 router.use(authenticateAdminJwt);
 
 router.get('/programs', validateSettingsTenantQuery, validateRequest, settingsController.listPrograms);

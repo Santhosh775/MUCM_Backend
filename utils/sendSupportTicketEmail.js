@@ -1,4 +1,4 @@
-const { getTransport } = require('./mailTransport');
+const { sendBrevoRawEmail } = require('./brevo');
 
 const DEFAULT_ADMISSIONS_TO = 'santhoshdeecodes@gmail.com';
 
@@ -7,11 +7,9 @@ function admissionsInbox() {
 }
 
 /**
- * Notify admissions inbox of a new portal support ticket.
- * Uses same SMTP_* / MAIL_FROM configuration as OTP mail.
+ * Notify admissions inbox of a new portal support ticket via Brevo.
  */
 async function sendSupportTicketToAdmissions({ ticketId, subject, message, applicantEmail }) {
-    const from = process.env.MAIL_FROM || process.env.SMTP_USER || 'noreply@localhost';
     const to = admissionsInbox();
     const mailSubject = `[Application portal] ${subject}`;
 
@@ -42,31 +40,24 @@ async function sendSupportTicketToAdmissions({ ticketId, subject, message, appli
         message
     )}</pre>`;
 
-    const transport = getTransport();
-    if (!transport) {
-        console.warn(
-            '[Support ticket] SMTP_HOST is not set — ticket email was not sent. Ticket is still stored in the database.'
-        );
-        return { delivered: false, reason: 'smtp_not_configured' };
+    try {
+        await sendBrevoRawEmail({
+            to,
+            subject: mailSubject,
+            htmlContent: html,
+            textContent: text
+        });
+        return { delivered: true };
+    } catch (err) {
+        console.error('[Support ticket] Brevo send failed:', err.message || err);
+        return { delivered: false, reason: 'brevo_error' };
     }
-
-    await transport.sendMail({
-        from,
-        to,
-        replyTo: applicantEmail || undefined,
-        subject: mailSubject,
-        text,
-        html
-    });
-
-    return { delivered: true };
 }
 
 /**
- * Notify applicant when admin posts a reply to their support ticket.
+ * Notify applicant when admin posts a reply to their support ticket via Brevo.
  */
 async function sendSupportTicketReplyToApplicant({ to, ticketId, subject, replyMessage }) {
-    const from = process.env.MAIL_FROM || process.env.SMTP_USER || 'noreply@localhost';
     const mailSubject = `[MUCM support] Reply for ticket ${ticketId}`;
     const text = [
         'Your support ticket has a new reply from MUCM admin.',
@@ -89,21 +80,18 @@ async function sendSupportTicketReplyToApplicant({ to, ticketId, subject, replyM
         replyMessage
     )}</pre>`;
 
-    const transport = getTransport();
-    if (!transport) {
-        console.warn('[Support ticket] SMTP_HOST is not set — reply email was not sent.');
-        return { delivered: false, reason: 'smtp_not_configured' };
+    try {
+        await sendBrevoRawEmail({
+            to,
+            subject: mailSubject,
+            htmlContent: html,
+            textContent: text
+        });
+        return { delivered: true };
+    } catch (err) {
+        console.error('[Support ticket reply] Brevo send failed:', err.message || err);
+        return { delivered: false, reason: 'brevo_error' };
     }
-
-    await transport.sendMail({
-        from,
-        to,
-        subject: mailSubject,
-        text,
-        html
-    });
-
-    return { delivered: true };
 }
 
 function escapeHtml(s) {
@@ -115,3 +103,4 @@ function escapeHtml(s) {
 }
 
 module.exports = { sendSupportTicketToAdmissions, sendSupportTicketReplyToApplicant, admissionsInbox };
+

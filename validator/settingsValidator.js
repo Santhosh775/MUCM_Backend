@@ -15,7 +15,8 @@ exports.validateProgramCreate = [
     body('duration_years').optional().isInt({ min: 0 }),
     body('description').optional().isString(),
     body('capacity').optional().isInt({ min: 0 }),
-    body('active').optional().isBoolean()
+    body('active').optional().isBoolean(),
+    body('subPrograms').optional().isArray()
 ];
 
 exports.validateProgramUpdate = [
@@ -28,7 +29,8 @@ exports.validateProgramUpdate = [
     body('duration_years').optional().isInt({ min: 0 }),
     body('description').optional().isString(),
     body('capacity').optional().isInt({ min: 0 }),
-    body('active').optional().isBoolean()
+    body('active').optional().isBoolean(),
+    body('subPrograms').optional().isArray()
 ];
 
 exports.validateProgramIdParam = [idParam];

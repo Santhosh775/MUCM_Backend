@@ -3,7 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const { mountApp } = require('./factory/createApp');
 const { connectDB, sequelize } = require('./config/db');
-const { verifySmtpOnStartup } = require('./utils/mailTransport');
+
 const { ensureSupportTicketSchema } = require('./utils/ensureSupportTicketSchema');
 const { ensureEmailTemplateSchema } = require('./utils/ensureEmailTemplateSchema');
 const { ensurePipelineStagesSettingsColumns } = require('./utils/ensurePipelineStagesSettingsColumns');
@@ -11,7 +11,7 @@ const { ensureAdminsCountryColumn } = require('./utils/ensureAdminsCountryColumn
 const { ensureDocumentReviewSignatureColumn } = require('./utils/ensureDocumentReviewSignatureColumn');
 const { ensureApplicationStatusNotificationsSchema } = require('./utils/ensureApplicationStatusNotificationsSchema');
 const { ensureProgramsDescriptionColumn } = require('./utils/ensureProgramsDescriptionColumn');
-
+const { ensureProgramsSubProgramsColumn } = require('./utils/ensureProgramsSubProgramsColumn');
 dotenv.config();
 
 const app = express();
@@ -56,6 +56,14 @@ function shouldSyncDatabaseOnStart() {
 
 async function start() {
     await connectDB();
+    if (shouldSyncDatabaseOnStart()) {
+        await sequelize.sync({ alter: false });
+        console.log('Database synced (Sequelize).');
+    } else {
+        console.log('Database sync skipped (DB_SYNC_ON_START=false or production).');
+    }
+
+    // Run schema patch helpers after sync to ensure base tables exist
     await ensureSupportTicketSchema();
     await ensureEmailTemplateSchema();
     await ensurePipelineStagesSettingsColumns();
@@ -63,13 +71,8 @@ async function start() {
     await ensureDocumentReviewSignatureColumn();
     await ensureApplicationStatusNotificationsSchema();
     await ensureProgramsDescriptionColumn();
-    await verifySmtpOnStartup();
-    if (shouldSyncDatabaseOnStart()) {
-        await sequelize.sync({ alter: false });
-        console.log('Database synced (Sequelize).');
-    } else {
-        console.log('Database sync skipped (DB_SYNC_ON_START=false or production).');
-    }
+    await ensureProgramsSubProgramsColumn();
+
 
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);

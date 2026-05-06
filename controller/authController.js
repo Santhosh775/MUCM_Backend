@@ -80,10 +80,7 @@ exports.requestOtp = async (req, res) => {
                 otp_expires_at: null,
                 last_otp_sent_at: previousLastOtpSentAt || null
             });
-            const msg =
-                sendResult.reason === 'smtp_not_configured'
-                    ? 'Email could not be sent. Configure SMTP (SMTP_HOST, MAIL_FROM, etc.) on the server.'
-                    : 'Email could not be sent. Try again later.';
+            const msg = sendResult.message || 'Email could not be sent. Try again later.';
             return res.status(503).json({ success: false, message: msg });
         }
 

@@ -1,4 +1,4 @@
-const { getTransport } = require('./mailTransport');
+const { sendBrevoRawEmail } = require('./brevo');
 
 function escapeHtml(s) {
     return String(s || '')
@@ -32,28 +32,24 @@ function deriveBodyPreview(body, maxLen = 220) {
 }
 
 async function sendComposeEmail({ to, subject, body }) {
-    const from = process.env.MAIL_FROM || process.env.SMTP_USER || 'noreply@localhost';
-    const transport = getTransport();
-    if (!transport) {
-        console.warn('[Compose email] SMTP_HOST is not set — email was not sent.');
-        return { delivered: false, reason: 'smtp_not_configured' };
-    }
-
     const html = `<p style="margin:0 0 12px;font-family:sans-serif;font-size:14px;line-height:1.5;color:#111">${escapeHtml(
         body
     )
         .split(/\r?\n/)
         .join('<br/>')}</p>`;
 
-    await transport.sendMail({
-        from,
-        to,
-        subject: String(subject || '').trim() || '(no subject)',
-        text: String(body || ''),
-        html
-    });
-
-    return { delivered: true };
+    try {
+        await sendBrevoRawEmail({
+            to,
+            subject: String(subject || '').trim() || '(no subject)',
+            htmlContent: html,
+            textContent: String(body || '')
+        });
+        return { delivered: true };
+    } catch (err) {
+        console.error('[Compose email] Brevo send failed:', err.message || err);
+        return { delivered: false, reason: 'brevo_error' };
+    }
 }
 
 module.exports = {
@@ -62,3 +58,4 @@ module.exports = {
     deriveBodyPreview,
     sendComposeEmail
 };
+

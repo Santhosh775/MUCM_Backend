@@ -1,17 +1,13 @@
-const { getTransport } = require('./mailTransport');
+const { sendBrevoRawEmail } = require('./brevo');
 
 /**
- * OTP email delivery via Nodemailer + SMTP.
- *
- * Works with any SMTP provider (Gmail/Workspace app password, Outlook, SendGrid SMTP,
- * AWS SES SMTP, Mailgun SMTP, university on-prem relay, etc.). Nodemailer does not
- * replace a reputable sender domain — configure SPF/DKIM/DMARC on your sending domain
- * for reliable delivery to international inboxes.
+ * OTP email delivery via Brevo.
  *
  * Env:
- *   SMTP_HOST, SMTP_PORT (default 587), SMTP_SECURE=true for 465
- *   SMTP_USER, SMTP_PASS (omit if relay allows unauthenticated LAN)
- *   MAIL_FROM — "MUCM Admissions <admissions@mucm.edu>"
+ *   BREVO_API_KEY
+ *   BREVO_SENDER_NAME
+ *   BREVO_SENDER_EMAIL
+ *   OTP_EMAIL_SUBJECT
  *   OTP_LOG_PLAINTEXT=true — log code (dev only)
  */
 
@@ -21,7 +17,6 @@ async function sendOtpToApplicant(email, otpPlaintext) {
         console.info(`[OTP] (dev log) to=${email} code=${otpPlaintext}`);
     }
 
-    const from = process.env.MAIL_FROM || process.env.SMTP_USER || 'noreply@localhost';
     const subject = process.env.OTP_EMAIL_SUBJECT || 'Your MUCM application verification code';
 
     const text = [
@@ -39,27 +34,25 @@ async function sendOtpToApplicant(email, otpPlaintext) {
 <p style="color:#555">This code expires in ${Number(process.env.OTP_EXPIRY_MINUTES) || 10} minutes.</p>
 <p style="color:#555;font-size:13px">If you did not request this, you can ignore this email.</p>`;
 
-    const transport = getTransport();
-    if (!transport) {
-        console.warn(
-            '[OTP] SMTP_HOST is not set — email was not sent. Configure SMTP_* env vars or use OTP_LOG_PLAINTEXT / OTP_RETURN_IN_RESPONSE for development.'
-        );
-        return { delivered: false, reason: 'smtp_not_configured' };
+    try {
+        const result = await sendBrevoRawEmail({
+            to: email,
+            subject,
+            htmlContent: html,
+            textContent: text
+        });
+
+        if (result.delivered) {
+            const idSuffix = result.messageId ? ` (id ${result.messageId})` : '';
+            // eslint-disable-next-line no-console
+            console.info(`[OTP] Brevo accepted${idSuffix}`);
+            return { delivered: true };
+        }
+        return { delivered: false, reason: 'brevo_error', message: result.error || 'Unknown Brevo error' };
+    } catch (err) {
+        console.error('[OTP] Brevo send failed:', err.message || err);
+        return { delivered: false, reason: 'brevo_exception', message: err.message };
     }
-
-    const info = await transport.sendMail({
-        from,
-        to: email,
-        subject,
-        text,
-        html
-    });
-
-    const idSuffix = info.messageId ? ` (id ${info.messageId})` : '';
-    // eslint-disable-next-line no-console
-    console.info(`[OTP] SMTP accepted${idSuffix}`);
-
-    return { delivered: true };
 }
 
 async function sendOtpToAdmin(email, otpPlaintext) {
@@ -68,7 +61,6 @@ async function sendOtpToAdmin(email, otpPlaintext) {
         console.info(`[Admin OTP] (dev log) to=${email} code=${otpPlaintext}`);
     }
 
-    const from = process.env.MAIL_FROM || process.env.SMTP_USER || 'noreply@localhost';
     const subject = process.env.ADMIN_OTP_EMAIL_SUBJECT
         || process.env.OTP_EMAIL_SUBJECT
         || 'Your MUCM admin verification code';
@@ -88,27 +80,26 @@ async function sendOtpToAdmin(email, otpPlaintext) {
 <p style="color:#555">This code expires in ${Number(process.env.OTP_EXPIRY_MINUTES) || 10} minutes.</p>
 <p style="color:#555;font-size:13px">If you did not request this, you can ignore this email.</p>`;
 
-    const transport = getTransport();
-    if (!transport) {
-        console.warn(
-            '[Admin OTP] SMTP_HOST is not set — email was not sent. Configure SMTP_* env vars or use OTP_LOG_PLAINTEXT / OTP_RETURN_IN_RESPONSE for development.'
-        );
-        return { delivered: false, reason: 'smtp_not_configured' };
+    try {
+        const result = await sendBrevoRawEmail({
+            to: email,
+            subject,
+            htmlContent: html,
+            textContent: text
+        });
+
+        if (result.delivered) {
+            const idSuffix = result.messageId ? ` (id ${result.messageId})` : '';
+            // eslint-disable-next-line no-console
+            console.info(`[Admin OTP] Brevo accepted${idSuffix}`);
+            return { delivered: true };
+        }
+        return { delivered: false, reason: 'brevo_error', message: result.error || 'Unknown Brevo error' };
+    } catch (err) {
+        console.error('[Admin OTP] Brevo send failed:', err.message || err);
+        return { delivered: false, reason: 'brevo_exception', message: err.message };
     }
-
-    const info = await transport.sendMail({
-        from,
-        to: email,
-        subject,
-        text,
-        html
-    });
-
-    const idSuffix = info.messageId ? ` (id ${info.messageId})` : '';
-    // eslint-disable-next-line no-console
-    console.info(`[Admin OTP] SMTP accepted${idSuffix}`);
-
-    return { delivered: true };
 }
 
 module.exports = { sendOtpToApplicant, sendOtpToAdmin };
+

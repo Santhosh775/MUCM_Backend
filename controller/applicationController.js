@@ -225,11 +225,12 @@ exports.createApplication = async (req, res) => {
 
 exports.listApplications = async (req, res) => {
     try {
-        const { status, program_id, intake_id, page = 1, limit = 20 } = req.query;
+        const { status, program_id, intake_id, created_by, page = 1, limit = 20 } = req.query;
         const where = { deleted_at: null };
         if (status) where.current_status = status;
         if (program_id) where.program_id = program_id;
         if (intake_id) where.intake_id = intake_id;
+        if (created_by) where.created_by = created_by;
 
         const offset = (Number(page) - 1) * Number(limit);
         const { rows, count } = await Application.findAndCountAll({

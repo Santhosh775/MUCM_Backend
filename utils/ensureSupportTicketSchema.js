@@ -15,7 +15,13 @@ async function ensureSupportTicketSchema() {
         updated_at: { type: DataTypes.DATE, allowNull: false, defaultValue: sequelize.literal('CURRENT_TIMESTAMP') }
     }).catch(() => {});
 
-    const supportTicketColumns = await qi.describeTable('support_tickets');
+    let supportTicketColumns;
+    try {
+        supportTicketColumns = await qi.describeTable('support_tickets');
+    } catch (err) {
+        // Table doesn't exist yet, skip patches
+        return;
+    }
 
     if (!supportTicketColumns.category_id) {
         await qi.addColumn('support_tickets', 'category_id', {

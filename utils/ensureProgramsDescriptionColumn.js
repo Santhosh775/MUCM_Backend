@@ -3,7 +3,13 @@ const { sequelize } = require('../config/db');
 
 async function ensureProgramsDescriptionColumn() {
     const qi = sequelize.getQueryInterface();
-    const table = await qi.describeTable('programs');
+    let table;
+    try {
+        table = await qi.describeTable('programs');
+    } catch (err) {
+        return;
+    }
+
     if (!table.description) {
         await qi.addColumn('programs', 'description', {
             type: DataTypes.TEXT,
