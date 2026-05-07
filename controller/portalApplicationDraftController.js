@@ -295,9 +295,9 @@ async function syncPortalDraftToSectionTables(applicationRowId, formValues) {
             why_medicine: 'whyMedicine',
             why_mucm: 'whyMUCM',
             personal_statement: 'personalStatement',
-            review_signature_method: 'studentSignatureMethod',
-            review_signature_typed: 'studentSignatureTyped',
-            review_signature_upload: 'studentSignatureUpload'
+            review_signature_method: 'reviewSignatureMethod',
+            review_signature_typed: 'reviewSignatureTyped',
+            review_signature_upload: 'reviewSignatureUpload'
         }),
         updated_at: now
     };
@@ -330,6 +330,89 @@ async function resolveApplicationRowId(userId, body = {}, query = {}) {
     });
     return app?.id || null;
 }
+
+exports.saveAdminDraft = async (req, res) => {
+    try {
+        const { applicationId, formValues, currentStepIndex: rawStep, savedFromAction } = req.body;
+        if (!applicationId) {
+            return res.status(400).json({ success: false, message: 'applicationId is required' });
+        }
+
+        const app = await Application.findOne({ where: { id: applicationId, deleted_at: null } });
+        if (!app) {
+            return res.status(404).json({ success: false, message: 'Application not found' });
+        }
+
+        const currentStepIndex =
+            typeof rawStep === 'number'
+                ? Math.max(0, Math.floor(rawStep))
+                : parseInt(String(rawStep || '0'), 10) || 0;
+        const now = new Date();
+        const action = String(savedFromAction || 'save_and_continue').trim().toLowerCase();
+
+        const where = { application_id: applicationId };
+        const existing = await PortalApplicationDraft.findOne({ where });
+        if (existing) {
+            await existing.update({
+                form_values: formValues ?? {},
+                current_step_index: currentStepIndex,
+                saved_from_action: action,
+                saved_at: now
+            });
+        } else {
+            await PortalApplicationDraft.create({
+                user_id: app.student_id || null,
+                application_id: applicationId,
+                form_values: formValues ?? {},
+                current_step_index: currentStepIndex,
+                saved_from_action: action,
+                saved_at: now
+            });
+        }
+
+        try {
+            await syncPortalDraftToSectionTables(applicationId, formValues ?? {});
+        } catch (syncError) {
+            console.error('saveAdminDraft syncPortalDraftToSectionTables', syncError);
+        }
+
+        return res.json({ success: true, message: 'Draft saved', data: { applicationId, currentStepIndex, savedAt: now } });
+    } catch (error) {
+        console.error('saveAdminDraft', error);
+        return res.status(500).json({ success: false, message: error.message || 'Server error' });
+    }
+};
+
+exports.getAdminDraft = async (req, res) => {
+    try {
+        const { applicationId } = req.params;
+        if (!applicationId) {
+            return res.status(400).json({ success: false, message: 'applicationId is required' });
+        }
+
+        const draft = await PortalApplicationDraft.findOne({
+            where: { application_id: applicationId },
+            order: [['updated_at', 'DESC']]
+        });
+
+        if (!draft) {
+            return res.json({ success: true, data: null });
+        }
+
+        return res.json({
+            success: true,
+            data: {
+                formValues: draft.form_values || null,
+                currentStepIndex: typeof draft.current_step_index === 'number' ? draft.current_step_index : 0,
+                savedAt: draft.saved_at,
+                applicationId: draft.application_id
+            }
+        });
+    } catch (error) {
+        console.error('getAdminDraft', error);
+        return res.status(500).json({ success: false, message: error.message || 'Server error' });
+    }
+};
 
 exports.getApplicationDraft = async (req, res) => {
     try {

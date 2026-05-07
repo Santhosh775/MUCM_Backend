@@ -1,4 +1,4 @@
-const { Admin, AdminRole } = require('../model/associations');
+const { Admin, AdminRole, AdminUser } = require('../model/associations');
 const { Op } = require('sequelize');
 
 exports.create = async (req, res) => {
@@ -126,7 +126,8 @@ exports.remove = async (req, res) => {
     try {
         const row = await Admin.findOne({ where: { id: req.params.id, deleted_at: null } });
         if (!row) return res.status(404).json({ success: false, message: 'Admin not found' });
-        await row.update({ deleted_at: new Date() });
+        await AdminUser.destroy({ where: { admin_id: row.id } });
+        await row.destroy();
         return res.json({ success: true, message: 'Admin deleted' });
     } catch (error) {
         console.error('remove admin', error);

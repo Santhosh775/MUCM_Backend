@@ -34,6 +34,9 @@ async function findAuthorizedAdmin(email) {
     });
 }
 
+const MSG_EMAIL_NOT_AUTHORIZED_ADMIN = 'This email is not authorized for admin login';
+const MSG_INVALID_EMAIL_OR_OTP = 'Invalid email or OTP';
+
 exports.requestOtp = async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
@@ -45,7 +48,7 @@ exports.requestOtp = async (req, res) => {
         if (!admin) {
             return res.status(403).json({
                 success: false,
-                message: 'This email is not authorized for admin login'
+                message: MSG_EMAIL_NOT_AUTHORIZED_ADMIN
             });
         }
         if (admin.role && admin.role.is_active === false) {
@@ -130,10 +133,7 @@ exports.verifyOtp = async (req, res) => {
 
         const admin = await findAuthorizedAdmin(email);
         if (!admin) {
-            return res.status(403).json({
-                success: false,
-                message: 'This email is not authorized for admin login'
-            });
+            return res.status(401).json({ success: false, message: MSG_INVALID_EMAIL_OR_OTP });
         }
         if (admin.role && admin.role.is_active === false) {
             return res.status(403).json({
@@ -156,7 +156,7 @@ exports.verifyOtp = async (req, res) => {
             return res.status(401).json({ success: false, message: 'OTP has expired' });
         }
         if (adminUser.otp_code_hash !== hashOtp(admin.email, otp)) {
-            return res.status(401).json({ success: false, message: 'Invalid email or OTP' });
+            return res.status(401).json({ success: false, message: MSG_INVALID_EMAIL_OR_OTP });
         }
 
         const now = new Date();

@@ -15,6 +15,7 @@ const announcementRoute = require('./announcementRoute');
 const brevoRoute = require('./brevoRoute');
 const settingsRoute = require('./settingsRoute');
 const publicRoute = require('./publicRoute');
+const adminDraftRoute = require('./adminDraftRoute');
 
 /**
  * Mounts all HTTP API routers. Kept separate from Express bootstrap so the app
@@ -47,6 +48,7 @@ function registerRoutes(app) {
     app.use('/api/v1/public', publicRoute);
     /** Admin settings (programs, intakes, fees, docs, pipeline, dropdowns) — camelCase API aligned with university-admin-panel */
     app.use('/api/v1/settings', settingsRoute);
+    app.use('/api/v1/admin-drafts', adminDraftRoute);
 }
 
 module.exports = { registerRoutes };

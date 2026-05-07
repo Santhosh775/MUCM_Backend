@@ -16,6 +16,7 @@ const {
     ApplicationStatusNotification
 } = require('../model/associations');
 const { generateApplicationId } = require('../utils/generateApplicationId');
+const { sendApplicationStatusEmailToApplicant } = require('../utils/sendApplicationStatusEmail');
 
 const includeAll = [
     { model: PersonalDetails, as: 'personal_details' },
@@ -75,6 +76,28 @@ async function notifyUsersForStatusChange(app, nextStatusKey, nextStatusLabelInp
     const statusLabel = String(nextStatusLabelInput || '').trim() || statusToLabel(statusKey);
     if (!statusKey && !statusLabel) return;
 
+    const personal = await PersonalDetails.findOne({
+        where: { application_id: app.id },
+        attributes: ['email', 'first_name', 'surname']
+    });
+
+    const applicantDisplayName = `${personal?.first_name || ''} ${personal?.surname || ''}`.trim() || 'Applicant';
+
+    /** @type {Map<string, string>} normalizedEmail -> greeting name */
+    const emailRecipients = new Map();
+
+    function addEmailRecipient(rawEmail, name) {
+        const e = String(rawEmail || '').trim().toLowerCase();
+        if (!e.includes('@')) return;
+        if (!emailRecipients.has(e)) {
+            emailRecipients.set(e, String(name || applicantDisplayName).trim() || 'Applicant');
+        }
+    }
+
+    if (personal?.email) {
+        addEmailRecipient(personal.email, applicantDisplayName);
+    }
+
     const candidateIds = new Set();
     if (app.student_id) candidateIds.add(String(app.student_id));
     if (app.created_by) candidateIds.add(String(app.created_by));
@@ -98,15 +121,11 @@ async function notifyUsersForStatusChange(app, nextStatusKey, nextStatusLabelInp
     const recipientIds = new Set(validUsers.map((row) => String(row.id)));
 
     if (recipientIds.size === 0) {
-        const personal = await PersonalDetails.findOne({
-            where: { application_id: app.id },
-            attributes: ['email']
-        });
         const email = String(personal?.email || '').trim().toLowerCase();
-        if (email) {
-            const portalUser = await ApplicationUser.findOne({
+        if (email && personal?.email) {
+            const [portalUser] = await ApplicationUser.findOrCreate({
                 where: { email },
-                attributes: ['id']
+                defaults: { email, is_active: true }
             });
             if (portalUser?.id) {
                 recipientIds.add(String(portalUser.id));
@@ -114,8 +133,18 @@ async function notifyUsersForStatusChange(app, nextStatusKey, nextStatusLabelInp
         }
     }
 
-    if (recipientIds.size === 0) {
-        console.warn('notifyUsersForStatusChange: no valid recipient found', {
+    if (recipientIds.size > 0) {
+        const userRows = await ApplicationUser.findAll({
+            where: { id: Array.from(recipientIds) },
+            attributes: ['email']
+        });
+        for (const u of userRows) {
+            addEmailRecipient(u.email, applicantDisplayName);
+        }
+    }
+
+    if (recipientIds.size === 0 && emailRecipients.size === 0) {
+        console.warn('notifyUsersForStatusChange: no valid recipient or applicant email found', {
             application_row_id: app.id,
             application_id: app.application_id
         });
@@ -123,26 +152,39 @@ async function notifyUsersForStatusChange(app, nextStatusKey, nextStatusLabelInp
     }
 
     const message = `Your application ${app.application_id} status changed to ${statusLabel}.`;
-    try {
-        await ApplicationStatusNotification.bulkCreate(
-            Array.from(recipientIds).map((userId) => ({
-                user_id: userId,
+
+    if (recipientIds.size > 0) {
+        try {
+            await ApplicationStatusNotification.bulkCreate(
+                Array.from(recipientIds).map((userId) => ({
+                    user_id: userId,
+                    application_row_id: app.id,
+                    application_id: app.application_id,
+                    status_key: statusKey || null,
+                    status_label: statusLabel || null,
+                    message,
+                    is_read: false
+                }))
+            );
+        } catch (error) {
+            console.error('notifyUsersForStatusChange: insert failed', {
                 application_row_id: app.id,
                 application_id: app.application_id,
-                status_key: statusKey || null,
-                status_label: statusLabel || null,
-                message,
-                is_read: false
-            }))
-        );
-    } catch (error) {
-        console.error('notifyUsersForStatusChange: insert failed', {
-            application_row_id: app.id,
-            application_id: app.application_id,
-            recipients: Array.from(recipientIds),
-            error: error?.message || error
+                recipients: Array.from(recipientIds),
+                error: error?.message || error
+            });
+            throw error;
+        }
+    }
+
+    for (const [emailAddr, greetingName] of emailRecipients) {
+        await sendApplicationStatusEmailToApplicant({
+            to: emailAddr,
+            toName: greetingName,
+            applicationRef: app.application_id,
+            statusLabel,
+            message
         });
-        throw error;
     }
 }
 

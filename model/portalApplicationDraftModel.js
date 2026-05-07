@@ -9,7 +9,7 @@ const PortalApplicationDraft = sequelize.define('PortalApplicationDraft', {
     },
     user_id: {
         type: DataTypes.UUID,
-        allowNull: false
+        allowNull: true
     },
     application_id: {
         type: DataTypes.UUID,
