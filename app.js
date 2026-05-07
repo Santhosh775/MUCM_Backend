@@ -57,7 +57,7 @@ function shouldSyncDatabaseOnStart() {
 async function start() {
     await connectDB();
     if (shouldSyncDatabaseOnStart()) {
-        await sequelize.sync({ alter: false });
+        await sequelize.sync({ alter: true });
         console.log('Database synced (Sequelize).');
     } else {
         console.log('Database sync skipped (DB_SYNC_ON_START=false or production).');
