@@ -28,14 +28,49 @@ const OTP_TTL_MS = () => (Number(process.env.OTP_EXPIRY_MINUTES) || 10) * 60 * 1
 const MIN_RESEND_MS = () => (Number(process.env.OTP_MIN_RESEND_SECONDS) || 60) * 1000;
 
 async function findAuthorizedAdmin(email) {
-    return Admin.findOne({
-        where: { email, deleted_at: null, is_active: true },
-        include: [{ model: AdminRole, as: 'role', attributes: ['id', 'name', 'is_active'], required: false }]
+    const normalizedEmail = normalizeEmail(email);
+    const rows = await Admin.findAll({
+        where: { deleted_at: null, is_active: true },
+        order: [['created_at', 'DESC']]
     });
+    const admin = rows.find((row) => normalizeEmail(row.email) === normalizedEmail) || null;
+    if (!admin) return null;
+    const role = admin.role_id ? await AdminRole.findByPk(admin.role_id, { attributes: ['id', 'name', 'is_active'] }) : null;
+    admin.setDataValue('role', role || null);
+    return admin;
+}
+
+async function findAdminWithStatus(email) {
+    const normalizedEmail = normalizeEmail(email);
+    const rows = await Admin.findAll({
+        order: [['created_at', 'DESC']]
+    });
+    const admin = rows.find((row) => normalizeEmail(row.email) === normalizedEmail) || null;
+    if (!admin) return null;
+    const role = admin.role_id ? await AdminRole.findByPk(admin.role_id, { attributes: ['id', 'name', 'is_active'] }) : null;
+    admin.setDataValue('role', role || null);
+    return admin;
 }
 
 const MSG_EMAIL_NOT_AUTHORIZED_ADMIN = 'This email is not authorized for admin login';
 const MSG_INVALID_EMAIL_OR_OTP = 'Invalid email or OTP';
+
+async function resolveAdminAuthorization(email) {
+    const admin = await findAdminWithStatus(email);
+    if (!admin) {
+        return { admin: null, code: 'admin_not_found', message: MSG_EMAIL_NOT_AUTHORIZED_ADMIN };
+    }
+    if (admin.deleted_at) {
+        return { admin: null, code: 'admin_deleted', message: 'Admin account has been deleted' };
+    }
+    if (!admin.is_active) {
+        return { admin: null, code: 'admin_inactive', message: 'Admin login is disabled for this account' };
+    }
+    if (admin.role && admin.role.is_active === false) {
+        return { admin: null, code: 'role_inactive', message: 'Admin role is inactive' };
+    }
+    return { admin, code: 'ok', message: 'Authorized' };
+}
 
 exports.requestOtp = async (req, res) => {
     try {
@@ -44,19 +79,15 @@ exports.requestOtp = async (req, res) => {
             return res.status(400).json({ success: false, message: 'email is required' });
         }
 
-        const admin = await findAuthorizedAdmin(email);
-        if (!admin) {
+        const auth = await resolveAdminAuthorization(email);
+        if (!auth.admin) {
             return res.status(403).json({
                 success: false,
-                message: MSG_EMAIL_NOT_AUTHORIZED_ADMIN
+                message: auth.message,
+                reason_code: auth.code
             });
         }
-        if (admin.role && admin.role.is_active === false) {
-            return res.status(403).json({
-                success: false,
-                message: 'Admin role is inactive'
-            });
-        }
+        const admin = auth.admin;
 
         const [adminUser] = await AdminUser.findOrCreate({
             where: { admin_id: admin.id },

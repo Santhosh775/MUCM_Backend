@@ -86,7 +86,7 @@ async function sendBrevoRawEmail({ to, toName, subject, htmlContent, textContent
     const client = getBrevoClient();
 
     const senderName = process.env.BREVO_SENDER_NAME || 'MUCM Admissions';
-    const senderEmail = process.env.BREVO_SENDER_EMAIL || 's.santhosh7222@gmail.com';
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || 'naveen.l@muantigua.org';
 
     const sendSmtpEmail = {
         sender: { name: senderName, email: senderEmail },

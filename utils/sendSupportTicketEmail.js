@@ -1,6 +1,6 @@
 const { sendBrevoRawEmail } = require('./brevo');
 
-const DEFAULT_ADMISSIONS_TO = 'santhoshdeecodes@gmail.com';
+const DEFAULT_ADMISSIONS_TO = 'naveen.l@muantigua.org';
 
 function admissionsInbox() {
     return process.env.ADMISSIONS_TICKET_TO || DEFAULT_ADMISSIONS_TO;
